@@ -43,7 +43,7 @@ def fill_order(order,txes=[]):
     pass
   
 def log_message(d):
-    msg = json.dumps(message_dict)
+    msg = json.dumps(d)
 
     # TODO: Add message to the Log table
     log = Log(message=msg)
