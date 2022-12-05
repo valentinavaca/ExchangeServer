@@ -158,7 +158,7 @@ def order_book():
         order_dict['signature'] = order_obj.signature
         order_dict['tx_id'] = order_obj.tx_id
         order_list.append(order_dict)
-    return jsonify(order_list)
+    return json.dumps(order_list)
 
 if __name__ == '__main__':
     app.run(port='5002')
