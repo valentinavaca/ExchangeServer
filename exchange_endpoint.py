@@ -152,6 +152,11 @@ def order_book():
 
     return jsonify(output)
 
+def match_check(order, curr_order):
+    if order.filled == None and order.sell_currency == curr_order.buy_currency and order.buy_currency == curr_order.sell_currency and curr_order.sell_amount / curr_order.buy_amount >= order.buy_amount / order.sell_amount:
+        return True
+    return False
+
 def process_order(order_dict):
     buy_currency = order_dict['buy_currency']
     sell_currency = order_dict['sell_currency']
