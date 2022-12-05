@@ -171,33 +171,51 @@ def trade():
         
 
 @app.route('/order_book')
+# def order_book():
+#     #Your code here
+#     #Note that you can access the database session using g.session
+#     orders = g.session.query(Order).all()
+#     order_data = []
+    
+#     for order in orders:
+#         order_dict = {}
+#         sender_pk = order.sender_pk
+#         receiver_pk = order.receiver_pk
+#         buy_currency = order.buy_currency
+#         sell_currency = order.sell_currency
+#         buy_amount = order.buy_amount
+#         sell_amount = order.sell_amount
+#         sig = order.signature
+#         order_dict['sender_pk'] = sender_pk
+#         order_dict['receiver_pk'] = receiver_pk
+#         order_dict['buy_currency'] = buy_currency
+#         order_dict['sell_currency'] = sell_currency
+#         order_dict['buy_amount'] = buy_amount
+#         order_dict['sell_amount'] = sell_amount
+#         order_dict['signature'] = sig
+#         order_data.append(order_dict)
+#     output = {}
+#     output['data'] = order_data
+
+#     return jsonify(output)
 def order_book():
     #Your code here
     #Note that you can access the database session using g.session
-    orders = g.session.query(Order).all()
-    order_data = []
-    
-    for order in orders:
-        order_dict = {}
-        sender_pk = order.sender_pk
-        receiver_pk = order.receiver_pk
-        buy_currency = order.buy_currency
-        sell_currency = order.sell_currency
-        buy_amount = order.buy_amount
-        sell_amount = order.sell_amount
-        sig = order.signature
-        order_dict['sender_pk'] = sender_pk
-        order_dict['receiver_pk'] = receiver_pk
-        order_dict['buy_currency'] = buy_currency
-        order_dict['sell_currency'] = sell_currency
-        order_dict['buy_amount'] = buy_amount
-        order_dict['sell_amount'] = sell_amount
-        order_dict['signature'] = sig
-        order_data.append(order_dict)
-    output = {}
-    output['data'] = order_data
+    order_list = []
+    order_objects = g.session.query(Order).all()
 
-    return jsonify(output)
+    for order_obj in order_objects:
+        order_dict = {}
+        order_dict['sender_pk'] = order_obj.sender_pk
+        order_dict['receiver_pk'] = order_obj.receiver_pk
+        order_dict['buy_currency'] = order_obj.buy_currency
+        order_dict['sell_currency'] = order_obj.sell_currency
+        order_dict['buy_amount'] = order_obj.buy_amount
+        order_dict['sell_amount'] = order_obj.sell_amount
+        order_dict['signature'] = order_obj.signature
+        order_list.append(order_dict)
+
+    return json.dumps(order_list)
 
 if __name__ == '__main__':
     app.run(port='5002')
