@@ -156,11 +156,11 @@ def trade():
         if response:
             order_dict = {
                 'buy_currency':payload["buy_currency"],
-                'sell_currency':payload["sell_currency"]
-                'buy_amount':payload["buy_amount"]
-                'sell_amount':payload["sell_amount"]
-                'sender_pk':payload["sender_pk"]
-                'receiver_pk':payload["receiver_pk"]
+                'sell_currency':payload["sell_currency"],
+                'buy_amount':payload["buy_amount"],
+                'sell_amount':payload["sell_amount"],
+                'sender_pk':payload["sender_pk"],
+                'receiver_pk':payload["receiver_pk"],
             }
             process_order(order_dict)
             return jsonify(True)
