@@ -88,6 +88,7 @@ def fill_order(order, txes=[]):
                 )
                 unfilled_orders = g.session.query(Order).filter(Order.filled==None).all()
                 fill_order(new_order, unfilled_orders)
+            break
   
 def log_message(d):
     # Takes input dictionary d and writes it to the Log table
