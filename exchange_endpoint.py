@@ -139,36 +139,34 @@ def trade():
         #Note that you can access the database session using g.session
 
         # TODO: Check the signature
-        sig = content.get('sig')
-        payload = content.get('payload')
-        if check_sig(payload, sig):
-            # TODO: Add the order to the database
-            sender_pk = payload['sender_pk']
-            receiver_pk = payload['receiver_pk']
-            buy_currency = payload['buy_currency']
-            sell_currency = payload['sell_currency']
-            buy_amount = payload['buy_amount']
-            sell_amount = payload['sell_amount']
-            order = Order(
-                sender_pk=sender_pk, 
-                receiver_pk=receiver_pk, 
-                buy_currency=buy_currency,
-                sell_currency=sell_currency,
-                buy_amount=buy_amount,
-                sell_amount=sell_amount
-            )
-            g.session.add(order)
-            g.session.commit()
+        payload = content["payload"]
+        platform = payload.get("platform")
+        sender_pk = payload.get("sender_pk")
+        sig = content.get("sig")
+        
 
-            # TODO: Fill the order
-            unfilled_orders = g.session.query(Order).filter(Order.filled==None).all()
-            fill_order(order, unfilled_orders)
+        if platform == "Ethereum":
+            eth_encoded_msg = eth_account.messages.encode_defunct(text=json.dumps(payload))
+            if eth_account.Account.recover_message(eth_encoded_msg, signature=sig) == sender_pk:
+                response = True
+        else:
+            if algosdk.util.verify_bytes(json.dumps(payload).encode('utf-8'), sig, sender_pk):
+                response = True
 
+        if response:
+            order_dict = {
+                'buy_currency':payload["buy_currency"],
+                'sell_currency':payload["sell_currency"]
+                'buy_amount':payload["buy_amount"]
+                'sell_amount':payload["sell_amount"]
+                'sender_pk':payload["sender_pk"]
+                'receiver_pk':payload["receiver_pk"]
+            }
+            process_order(order_dict)
             return jsonify(True)
         else:
-            # TODO: Be sure to return jsonify(True) or jsonify(False) depending on if the method was successful; Done
-            log_message(payload)
-            return jsonify( False )
+            log_message(content)
+            return jsonify(False)
 
         
 
@@ -200,6 +198,60 @@ def order_book():
     output['data'] = order_data
 
     return jsonify(output)
+
+def process_order(order_dict):
+    buy_currency = order_dict['buy_currency']
+    sell_currency = order_dict['sell_currency']
+    buy_amount = order_dict['buy_amount']
+    sell_amount = order_dict['sell_amount']
+    sender_pk = order_dict['sender_pk']
+    receiver_pk = order_dict['receiver_pk']
+    
+    if order_dict.get('creator_id') == None:
+        order = Order(sender_pk=sender_pk, receiver_pk=receiver_pk, buy_currency=buy_currency, sell_currency=sell_currency, buy_amount=buy_amount, sell_amount=sell_amount)    
+    else:
+        creator_id = order_dict.get('creator_id')
+        order = Order(sender_pk=sender_pk, receiver_pk=receiver_pk, buy_currency=buy_currency, sell_currency=sell_currency, buy_amount=buy_amount, sell_amount=sell_amount, creator_id=creator_id)
+    
+    session.add(order)
+    session.commit()
+    
+    orders = session.query(Order).filter(Order.filled == None).all()
+
+    for curr_order in orders:
+        if match_check(order, curr_order):
+            order.filled = datetime.now()
+            curr_order.filled = datetime.now()
+            
+            order.counterparty_id = curr_order.id
+            curr_order.counterparty_id = order.id
+            
+            session.commit()
+            
+            child = {}
+            if curr_order.sell_amount < order.buy_amount:
+                child['buy_currency'] = order.buy_currency
+                child['sell_currency'] = order.sell_currency
+                child['sender_pk'] = order.sender_pk
+                child['receiver_pk'] = order.receiver_pk
+                child['creator_id'] = order.id
+                child['buy_amount'] = order.buy_amount - curr_order.sell_amount
+                child['sell_amount'] = ((order.buy_amount - curr_order.sell_amount) * order.sell_amount / order.buy_amount) * 1.1
+                
+                #loop
+                process_order(child)
+                
+            if order.buy_amount < curr_order.sell_amount:
+                child['buy_currency'] = curr_order.buy_currency
+                child['sell_currency'] = curr_order.sell_currency
+                child['sender_pk'] = curr_order.sender_pk
+                child['receiver_pk'] = curr_order.receiver_pk
+                child['creator_id'] = curr_order.id
+                child['sell_amount'] = curr_order.sell_amount - order.buy_amount
+                child['buy_amount'] = ((curr_order.sell_amount - order.buy_amount) * curr_order.buy_amount / curr_order.sell_amount) * 0.9
+                
+                #loop
+                process_order(child)
 
 
 if __name__ == '__main__':
