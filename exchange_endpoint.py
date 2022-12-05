@@ -68,7 +68,7 @@ def fill_order(order, txes=[]):
                 )
                 unfilled_orders = g.session.query(Order).filter(Order.filled==None).all()
                 fill_order(new_order, unfilled_orders)
-    
+                break
             if unfilled_order.sell_amount > order.buy_amount:
                 sender_pk = unfilled_order.sender_pk
                 receiver_pk = unfilled_order.receiver_pk
@@ -88,6 +88,7 @@ def fill_order(order, txes=[]):
                 )
                 unfilled_orders = g.session.query(Order).filter(Order.filled==None).all()
                 fill_order(new_order, unfilled_orders)
+                break
             break
   
 def log_message(d):
