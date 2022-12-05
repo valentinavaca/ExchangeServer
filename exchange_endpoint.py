@@ -99,7 +99,6 @@ def trade():
             sell_currency = payload['sell_currency']
             buy_amount = payload['buy_amount']
             sell_amount = payload['sell_amount']
-            tx_id = payload['tx_id']
             order = Order(
                 sender_pk=sender_pk, 
                 receiver_pk=receiver_pk, 
@@ -142,7 +141,7 @@ def trade():
 def order_book():
     #Your code here
     #Note that you can access the database session using g.session
-    fields = [ "buy_currency", "sell_currency", "buy_amount", "sell_amount", "signature", "tx_id", "receiver_pk" ]
+    fields = [ "buy_currency", "sell_currency", "buy_amount", "sell_amount", "signature", "receiver_pk" ]
     
     # Same as before
     order_list = []
@@ -156,7 +155,6 @@ def order_book():
         order_dict['buy_amount'] = order_obj.buy_amount
         order_dict['sell_amount'] = order_obj.sell_amount
         order_dict['signature'] = order_obj.signature
-        order_dict['tx_id'] = order_obj.tx_id
         order_list.append(order_dict)
     return jsonify(order_list)
 
