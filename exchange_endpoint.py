@@ -213,10 +213,10 @@ def process_order(order_dict):
         creator_id = order_dict.get('creator_id')
         order = Order(sender_pk=sender_pk, receiver_pk=receiver_pk, buy_currency=buy_currency, sell_currency=sell_currency, buy_amount=buy_amount, sell_amount=sell_amount, creator_id=creator_id)
     
-    session.add(order)
-    session.commit()
+    g.session.add(order)
+    g.session.commit()
     
-    orders = session.query(Order).filter(Order.filled == None).all()
+    orders = g.session.query(Order).filter(Order.filled == None).all()
 
     for curr_order in orders:
         if match_check(order, curr_order):
@@ -226,7 +226,7 @@ def process_order(order_dict):
             order.counterparty_id = curr_order.id
             curr_order.counterparty_id = order.id
             
-            session.commit()
+            g.session.commit()
             
             child = {}
             if curr_order.sell_amount < order.buy_amount:
