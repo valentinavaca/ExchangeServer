@@ -139,12 +139,12 @@ def trade():
         payload = content.get('payload')
         if check_sig(payload, sig):
             # TODO: Add the order to the database
-            sender_pk = content['sender_pk']
-            receiver_pk = content['receiver_pk']
-            buy_currency = content['buy_currency']
-            sell_currency = content['sell_currency']
-            buy_amount = content['buy_amount']
-            sell_amount = content['sell_amount']
+            sender_pk = payload['sender_pk']
+            receiver_pk = payload['receiver_pk']
+            buy_currency = payload['buy_currency']
+            sell_currency = payload['sell_currency']
+            buy_amount = payload['buy_amount']
+            sell_amount = payload['sell_amount']
             order = Order(
                 sender_pk=sender_pk, 
                 receiver_pk=receiver_pk, 
