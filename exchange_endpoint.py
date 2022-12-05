@@ -61,7 +61,7 @@ def trade():
     if request.method == "POST":
         content = request.get_json(silent=True)
         print( f"content = {json.dumps(content)}" )
-        columns = [ "sender_pk", "receiver_pk", "buy_currency", "sell_currency", "buy_amount", "sell_amount", "platform" ]
+        columns = [ "buy_currency", "sell_currency", "buy_amount", "sell_amount", "platform", "tx_id", "receiver_pk"]
         fields = [ "sig", "payload" ]
 
         for field in fields:
@@ -99,6 +99,7 @@ def trade():
             sell_currency = payload['sell_currency']
             buy_amount = payload['buy_amount']
             sell_amount = payload['sell_amount']
+            tx_id = payload['tx_id']
             order = Order(
                 sender_pk=sender_pk, 
                 receiver_pk=receiver_pk, 
@@ -110,7 +111,7 @@ def trade():
             )
             g.session.add(order)
             g.session.commit()
-            # 3a. Check if the order is backed by a transaction equal to the sell_amount (this is new)
+            # 3a. Check if the order is backed by a transaction equal to the sell_amount
             if sell_currency == 'Ethereum':
                 tx = g.w3.eth.get_transaction(tx_id)
                 assert tx.value == sell_amount
@@ -155,6 +156,7 @@ def order_book():
         order_dict['buy_amount'] = order_obj.buy_amount
         order_dict['sell_amount'] = order_obj.sell_amount
         order_dict['signature'] = order_obj.signature
+        order_dict['tx_id'] = order_obj.tx_id
         order_list.append(order_dict)
     return jsonify(order_list)
 
