@@ -1,3 +1,5 @@
+
+
 from flask import Flask, request, g
 from flask_restful import Resource, Api
 from sqlalchemy import create_engine
@@ -31,7 +33,7 @@ def shutdown_session(response_or_exc):
 
 """ Suggested helper methods """
 
-def check_sig(payload,sig):
+def check_sig(payload, sig):
     pk = payload.get('pk')
     if payload.get('platform') == 'Ethereum':
         encoded_msg = eth_account.messages.encode_defunct(text=json.dumps(payload))
@@ -39,18 +41,69 @@ def check_sig(payload,sig):
     else:
         return algosdk.util.verify_bytes(json.dumps(payload).encode('utf-8'), sig, pk)
 
-def fill_order(order,txes=[]):
-    pass
+def fill_order(order, txes=[]):
+    for unfilled_order in txes:
+        if find_match(order, unfilled_order):
+            order.filled = datetime.now()
+            unfilled_order.filled = datetime.now()
+            order.counterparty_id = unfilled_order.id
+            unfilled_order.counterparty_id = order.id
+            g.session.commit()
+            if order.buy_amount > unfilled_order.sell_amount:
+                sender_pk = order.sender_pk
+                receiver_pk = order.receiver_pk
+                buy_currency = order.buy_currency
+                sell_currency = order.sell_currency
+                buy_amount = order.buy_amount - unfilled_order.sell_amount
+                sell_amount = 1.1*(buy_amount * order.sell_amount/order.buy_amount )
+                creator_id = order.id
+                new_order = Order(
+                    sender_pk = sender_pk, 
+                    receiver_pk = receiver_pk, 
+                    buy_currency = buy_currency,
+                    sell_currency = sell_currency,
+                    buy_amount = buy_amount,
+                    sell_amount = sell_amount,
+                    creator_id = creator_id,
+                )
+                unfilled_orders = g.session.query(Order).filter(Order.filled==None).all()
+                fill_order(new_order, unfilled_orders)
+    
+            if unfilled_order.sell_amount > order.buy_amount:
+                sender_pk = unfilled_order.sender_pk
+                receiver_pk = unfilled_order.receiver_pk
+                buy_currency = unfilled_order.buy_currency
+                sell_currency = unfilled_order.sell_currency
+                sell_amount = unfilled_order.sell_amount - order.buy_amount
+                buy_amount = 0.9 * ( sell_amount * unfilled_order.buy_amount / unfilled_order.sell_amount )
+                creator_id = unfilled_order.id
+                new_order = Order(
+                    sender_pk = sender_pk, 
+                    receiver_pk = receiver_pk, 
+                    buy_currency = buy_currency,
+                    sell_currency = sell_currency,
+                    buy_amount = buy_amount,
+                    sell_amount = sell_amount,
+                    creator_id = creator_id,
+                )
+                unfilled_orders = g.session.query(Order).filter(Order.filled==None).all()
+                fill_order(new_order, unfilled_orders)
   
 def log_message(d):
-    msg = json.dumps(d)
-
-    # TODO: Add message to the Log table
-    log = Log(message=msg)
+    # Takes input dictionary d and writes it to the Log table
+    # Hint: use json.dumps or str() to get it in a nice string form
+    log = Log(message=json.dumps(d))
     g.session.add(log)
     g.session.commit()
-    return
 
+
+def find_match(order, unfilled_order):
+    if order.filled==None:
+        if order.buy_currency == unfilled_order.sell_currency:
+            if order.sell_currency == unfilled_order.buy_currency:
+                if unfilled_order.sell_amount / unfilled_order.buy_amount >= order.buy_amount / order.sell_amount:
+                    return True
+    return False
 """ End of helper methods """
 
 
@@ -61,7 +114,7 @@ def trade():
     if request.method == "POST":
         content = request.get_json(silent=True)
         print( f"content = {json.dumps(content)}" )
-        columns = [ "buy_currency", "sell_currency", "buy_amount", "sell_amount", "platform", "tx_id", "receiver_pk"]
+        columns = [ "sender_pk", "receiver_pk", "buy_currency", "sell_currency", "buy_amount", "sell_amount", "platform" ]
         fields = [ "sig", "payload" ]
 
         for field in fields:
@@ -82,71 +135,46 @@ def trade():
         #Note that you can access the database session using g.session
 
         # TODO: Check the signature
-        
-        # TODO: Add the order to the database
-        
-        # TODO: Fill the order
-        
-        # TODO: Be sure to return jsonify(True) or jsonify(False) depending on if the method was successful
         sig = content.get('sig')
         payload = content.get('payload')
-
-        if check_sig(payload, sig): # successfully verified
-            # 2. Add the order to the table in the database
-            sender_pk = payload['sender_pk']
-            receiver_pk = payload['receiver_pk']
-            buy_currency = payload['buy_currency']
-            sell_currency = payload['sell_currency']
-            buy_amount = payload['buy_amount']
-            sell_amount = payload['sell_amount']
-            tx_id = payload['tx_id']
+        if check_sig(payload, sig):
+            # TODO: Add the order to the database
+            sender_pk = content['sender_pk']
+            receiver_pk = content['receiver_pk']
+            buy_currency = content['buy_currency']
+            sell_currency = content['sell_currency']
+            buy_amount = content['buy_amount']
+            sell_amount = content['sell_amount']
             order = Order(
                 sender_pk=sender_pk, 
                 receiver_pk=receiver_pk, 
                 buy_currency=buy_currency,
                 sell_currency=sell_currency,
                 buy_amount=buy_amount,
-                sell_amount=sell_amount,
-                tx_id = tx_id,
+                sell_amount=sell_amount
             )
             g.session.add(order)
             g.session.commit()
-            # 3a. Check if the order is backed by a transaction equal to the sell_amount
-            if sell_currency == 'Ethereum':
-                tx = g.w3.eth.get_transaction(tx_id)
-                assert tx.value == sell_amount
-            elif sell_currency == 'Algorand':
-                tx = g.icl.search_transactions(txid=tx_id)
-                assert tx.amoutn == sell_amount
-            else:
-                pass
-            if (tx.platform!=tx.order.sell_currency or 
-                sell_amount!=tx.order.sell_amount or 
-                sender_pk!=tx.order.sender_pk or 
-                0):
-                return jsonify(False)
-            else:
-                # 3b. Fill the order (as in Exchange Server II) if the order is valid
-                pass
-                # 4. Execute the transactions
-                execute_txes(txes)
-        
-        else: # not verified
+
+            # TODO: Fill the order
+            unfilled_orders = g.session.query(Order).filter(Order.filled==None).all()
+            fill_order(order, unfilled_orders)
+
+            return jsonify(True)
+        else:
+            # TODO: Be sure to return jsonify(True) or jsonify(False) depending on if the method was successful; Done
             log_message(payload)
-            return jsonify(False)
-     
-        # If all goes well, return jsonify(True). else return jsonify(False)
-        return jsonify(True)
+            return jsonify( False )
+
+        
 
 @app.route('/order_book')
 def order_book():
     #Your code here
     #Note that you can access the database session using g.session
-    fields = [ "buy_currency", "sell_currency", "buy_amount", "sell_amount", "signature", "receiver_pk" ]
-    
-    # Same as before
     order_list = []
     order_objects = g.session.query(Order).all()
+
     for order_obj in order_objects:
         order_dict = {}
         order_dict['sender_pk'] = order_obj.sender_pk
@@ -156,8 +184,8 @@ def order_book():
         order_dict['buy_amount'] = order_obj.buy_amount
         order_dict['sell_amount'] = order_obj.sell_amount
         order_dict['signature'] = order_obj.signature
-        order_dict['tx_id'] = order_obj.tx_id
         order_list.append(order_dict)
+
     return json.dumps(order_list)
 
 if __name__ == '__main__':
