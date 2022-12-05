@@ -97,7 +97,7 @@ def trade():
         sender_pk = payload.get("sender_pk")
         sig = content.get("sig")
         
-
+        response = False
         if platform == "Ethereum":
             eth_encoded_msg = eth_account.messages.encode_defunct(text=json.dumps(payload))
             if eth_account.Account.recover_message(eth_encoded_msg, signature=sig) == sender_pk:
