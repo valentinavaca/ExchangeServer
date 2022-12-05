@@ -172,6 +172,9 @@ def trade():
 def order_book():
     #Your code here
     #Note that you can access the database session using g.session
+    orders = g.session.query(Order).all()
+    order_data = []
+    
     for order in orders:
         order_dict = {}
         sender_pk = order.sender_pk
